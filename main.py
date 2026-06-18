@@ -4,9 +4,10 @@ import os
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from graph.agent_graph import run_pipeline
 from tools.kubectl_tools import get_crashing_pods
 from tools.prometheus_tools import get_anomalies
 
@@ -34,12 +35,23 @@ async def health() -> dict[str, str]:
 
 
 @app.post("/analyze")
-async def analyze(request: AnalyzeRequest) -> dict[str, str]:
-    """Accept a namespace and return a placeholder response until agents are wired."""
-    return {
-        "status": "agents not wired yet",
-        "namespace": request.namespace,
-    }
+async def analyze(request: AnalyzeRequest) -> dict:
+    """Run the incident analysis pipeline for the requested namespace."""
+
+    try:
+        state = await run_pipeline(request.namespace)
+        return {
+            "status": "complete",
+            "namespace": request.namespace,
+            "crashing_pods": state["crashing_pods"],
+            "root_cause": state["root_cause"],
+            "runbook": state["runbook"],
+            "github_issue_url": state["github_issue_url"],
+            "current_step": state["current_step"],
+            "error": state["error"],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/cluster/pods")
