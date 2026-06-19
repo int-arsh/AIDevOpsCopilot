@@ -17,8 +17,10 @@ def get_all_pods(namespace: str = "all") -> dict:
             cmd,
             capture_output=True,
             text=True,
-            check=True,
         )
+        if result.returncode != 0:
+            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
+
         payload = json.loads(result.stdout)
         pods: list[dict[str, Any]] = []
 
@@ -62,8 +64,10 @@ def describe_pod(pod_name: str, namespace: str = "default") -> dict:
             ["kubectl", "describe", "pod", pod_name, "-n", namespace],
             capture_output=True,
             text=True,
-            check=True,
         )
+        if result.returncode != 0:
+            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
+
         return {"error": False, "data": result.stdout}
     except Exception as e:
         return {"error": True, "message": str(e), "output": ""}
@@ -82,8 +86,10 @@ def get_pod_logs(
             cmd,
             capture_output=True,
             text=True,
-            check=True,
         )
+        if result.returncode != 0:
+            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
+
         return {"error": False, "data": result.stdout}
     except Exception as e:
         return {"error": True, "message": str(e), "output": ""}
@@ -96,8 +102,10 @@ def get_node_resources() -> dict:
             ["kubectl", "top", "nodes"],
             capture_output=True,
             text=True,
-            check=True,
         )
+        if result.returncode != 0:
+            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
+
         lines = result.stdout.strip().splitlines()
         if len(lines) < 2:
             return {"error": False, "data": []}
@@ -129,8 +137,10 @@ def get_crashing_pods() -> dict:
             ["kubectl", "get", "pods", "--all-namespaces"],
             capture_output=True,
             text=True,
-            check=True,
         )
+        if result.returncode != 0:
+            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
+
         crashing_statuses = {"CrashLoopBackOff", "Error", "OOMKilled", "Pending"}
         lines = result.stdout.strip().splitlines()
         crashing_pods: list[dict[str, str]] = []
