@@ -9,7 +9,7 @@ the Prometheus anomaly data already stored in the shared state.
 import asyncio
 
 from graph.state import CopilotState
-from tools.kubectl_tools import get_pod_logs
+from tools.kubectl_tools import describe_pod, get_pod_logs
 from utils.groq_client import ask_groq
 
 
@@ -48,12 +48,48 @@ async def log_analyser_agent(state: CopilotState) -> CopilotState:
 
 		combined_logs_parts: list[str] = []
 
-		for pod_name in crashing_pods:
+		for pod_entry in crashing_pods:
+			if isinstance(pod_entry, dict):
+				pod_name = pod_entry.get("name", "")
+				pod_namespace = pod_entry.get("namespace") or namespace or "default"
+				pod_status = pod_entry.get("status", "")
+			else:
+				pod_name = str(pod_entry)
+				pod_namespace = namespace or "default"
+				pod_status = ""
+
+			if not pod_name:
+				continue
+
+			if pod_status == "Pending":
+				print(f"Log Analyser Agent: describing pending pod={pod_name}")
+				describe_result = await asyncio.to_thread(
+					describe_pod,
+					pod_name,
+					pod_namespace,
+				)
+
+				if describe_result.get("error"):
+					raise RuntimeError(
+						describe_result.get(
+							"message", f"Failed to describe pod {pod_name}"
+						)
+					)
+
+				pod_description = describe_result.get("data", "")
+				raw_logs[pod_name] = pod_description
+				combined_logs_parts.append(
+					f"=== {pod_name} ===\nPod Description (Pending pod):\n{pod_description}"
+				)
+				continue
+
 			print(f"Log Analyser Agent: fetching logs for pod={pod_name}")
 			logs_result = await asyncio.to_thread(
 				get_pod_logs,
 				pod_name,
-				namespace or "default",
+				pod_namespace,
+				True,
+				pod_status,
 			)
 
 			if logs_result.get("error"):

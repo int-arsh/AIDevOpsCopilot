@@ -17,9 +17,8 @@ def get_all_pods(namespace: str = "all") -> dict:
             cmd,
             capture_output=True,
             text=True,
+            check=True,
         )
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
 
         payload = json.loads(result.stdout)
         pods: list[dict[str, Any]] = []
@@ -64,9 +63,8 @@ def describe_pod(pod_name: str, namespace: str = "default") -> dict:
             ["kubectl", "describe", "pod", pod_name, "-n", namespace],
             capture_output=True,
             text=True,
+            check=True,
         )
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
 
         return {"error": False, "data": result.stdout}
     except Exception as e:
@@ -74,23 +72,46 @@ def describe_pod(pod_name: str, namespace: str = "default") -> dict:
 
 
 def get_pod_logs(
-    pod_name: str, namespace: str = "default", previous: bool = True
+    pod_name: str,
+    namespace: str = "default",
+    previous: bool = True,
+    pod_status: str = "",
 ) -> dict:
-    """Fetch the last 100 lines of logs for a pod, optionally from the previous container."""
-    try:
-        cmd = ["kubectl", "logs", pod_name, "-n", namespace, "--tail=100"]
-        if previous:
-            cmd.append("--previous")
+    """Fetch the last 100 lines of logs for a pod.
 
-        result = subprocess.run(
-            cmd,
+    The helper prefers the current container logs first, then falls back to
+    ``--previous`` when requested and the current logs are empty. Pending pods
+    are skipped entirely because they have not started a container yet.
+    """
+    try:
+        if pod_status == "Pending":
+            return {
+                "error": False,
+                "data": "",
+                "note": "Pod is in Pending state, no container has started yet.",
+            }
+
+        current_cmd = ["kubectl", "logs", pod_name, "-n", namespace, "--tail=100"]
+        current_result = subprocess.run(
+            current_cmd,
             capture_output=True,
             text=True,
+            check=True,
         )
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
 
-        return {"error": False, "data": result.stdout}
+        current_logs = current_result.stdout
+        if current_logs.strip() or not previous:
+            return {"error": False, "data": current_logs}
+
+        previous_cmd = current_cmd + ["--previous"]
+        previous_result = subprocess.run(
+            previous_cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        return {"error": False, "data": previous_result.stdout}
     except Exception as e:
         return {"error": True, "message": str(e), "output": ""}
 
@@ -102,9 +123,8 @@ def get_node_resources() -> dict:
             ["kubectl", "top", "nodes"],
             capture_output=True,
             text=True,
+            check=True,
         )
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
 
         lines = result.stdout.strip().splitlines()
         if len(lines) < 2:
@@ -137,9 +157,8 @@ def get_crashing_pods() -> dict:
             ["kubectl", "get", "pods", "--all-namespaces"],
             capture_output=True,
             text=True,
+            check=True,
         )
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip(), "output": result.stdout}
 
         crashing_statuses = {"CrashLoopBackOff", "Error", "OOMKilled", "Pending"}
         lines = result.stdout.strip().splitlines()

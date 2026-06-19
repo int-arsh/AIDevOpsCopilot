@@ -138,16 +138,67 @@ class TestGetPodLogs:
     """Tests for get_pod_logs."""
 
     @patch("tools.kubectl_tools.subprocess.run")
-    def test_success_with_previous(self, mock_run: MagicMock) -> None:
-        """Returns log output including --previous flag by default."""
+    def test_success_retries_with_previous_after_empty_current_logs(self, mock_run: MagicMock) -> None:
+        """Returns previous logs only after the current container logs come back empty."""
         log_output = "line 1\nline 2\nerror: connection refused\n"
-        mock_run.return_value = _success_result(log_output)
+        mock_run.side_effect = [_success_result(""), _success_result(log_output)]
 
         result = get_pod_logs("my-pod", namespace="prod", previous=True)
 
         assert result == {"error": False, "data": log_output}
+        assert mock_run.call_count == 2
+        assert mock_run.call_args_list[0].args[0] == [
+            "kubectl",
+            "logs",
+            "my-pod",
+            "-n",
+            "prod",
+            "--tail=100",
+        ]
+        assert mock_run.call_args_list[0].kwargs == {
+            "capture_output": True,
+            "text": True,
+            "check": True,
+        }
+        assert mock_run.call_args_list[1].args[0] == [
+            "kubectl",
+            "logs",
+            "my-pod",
+            "-n",
+            "prod",
+            "--tail=100",
+            "--previous",
+        ]
+        assert mock_run.call_args_list[1].kwargs == {
+            "capture_output": True,
+            "text": True,
+            "check": True,
+        }
+
+    @patch("tools.kubectl_tools.subprocess.run")
+    def test_pending_status_skips_log_fetching(self, mock_run: MagicMock) -> None:
+        """Skips kubectl logs entirely for Pending pods."""
+
+        result = get_pod_logs("my-pod", namespace="prod", previous=True, pod_status="Pending")
+
+        assert result == {
+            "error": False,
+            "data": "",
+            "note": "Pod is in Pending state, no container has started yet.",
+        }
+        mock_run.assert_not_called()
+
+    @patch("tools.kubectl_tools.subprocess.run")
+    def test_success_without_previous_retry(self, mock_run: MagicMock) -> None:
+        """Returns current container logs when they are already available."""
+        log_output = "line 1\nline 2\n"
+        mock_run.return_value = _success_result(log_output)
+
+        result = get_pod_logs("my-pod", namespace="prod", previous=False)
+
+        assert result == {"error": False, "data": log_output}
         mock_run.assert_called_once_with(
-            ["kubectl", "logs", "my-pod", "-n", "prod", "--tail=100", "--previous"],
+            ["kubectl", "logs", "my-pod", "-n", "prod", "--tail=100"],
             capture_output=True,
             text=True,
             check=True,

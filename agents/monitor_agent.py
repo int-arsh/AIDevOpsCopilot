@@ -59,7 +59,9 @@ async def monitor_agent(state: CopilotState) -> CopilotState:
 				pod for pod in crashing_entries if pod.get("namespace") == namespace
 			]
 
-		crashing_pod_names = [pod.get("name", "") for pod in crashing_entries if pod.get("name")]
+		crashing_pod_names = [
+			pod.get("name", "") for pod in crashing_entries if pod.get("name")
+		]
 
 		print("Monitor Agent: checking Prometheus anomalies...")
 		anomalies_result = await get_anomalies()
@@ -68,7 +70,7 @@ async def monitor_agent(state: CopilotState) -> CopilotState:
 
 		anomalies_payload = anomalies_result.get("data", {})
 
-		state["crashing_pods"] = crashing_pod_names
+		state["crashing_pods"] = crashing_entries
 		state["anomalies"] = anomalies_payload
 		state["current_step"] = "monitor_complete"
 

@@ -12,7 +12,7 @@ class CopilotState(TypedDict):
     """State passed between LangGraph agents during a single analysis run."""
 
     namespace: str
-    crashing_pods: list
+    crashing_pods: list[dict[str, str]]
     raw_logs: dict
     anomalies: dict
     analysis: str
