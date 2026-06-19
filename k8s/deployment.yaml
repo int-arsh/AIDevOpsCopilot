@@ -1,1 +1,59 @@
-# Kubernetes Deployment and related manifests for deploying the AI DevOps Copilot API.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-copilot
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devops-copilot
+  template:
+    metadata:
+      labels:
+        app: devops-copilot
+    spec:
+      serviceAccountName: devops-copilot-sa
+      containers:
+        - name: devops-copilot
+          # Replace this local image with a real registry image such as
+          # docker.io/yourusername/devops-copilot:latest for cluster use.
+          image: devops-copilot:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: devops-copilot-secrets
+                  key: GROQ_API_KEY
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: devops-copilot-secrets
+                  key: GITHUB_TOKEN
+            - name: GITHUB_REPO
+              valueFrom:
+                secretKeyRef:
+                  name: devops-copilot-secrets
+                  key: GITHUB_REPO
+            - name: PROMETHEUS_URL
+              value: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10 # Kubernetes Deployment and related manifests for deploying the AI DevOps Copilot API.

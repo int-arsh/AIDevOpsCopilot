@@ -2,7 +2,7 @@
 
 import json
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -89,6 +89,7 @@ class TestGetAllPods:
             capture_output=True,
             text=True,
             check=True,
+            env=ANY,
         )
 
     @patch("tools.kubectl_tools.subprocess.run")
@@ -120,6 +121,7 @@ class TestDescribePod:
             capture_output=True,
             text=True,
             check=True,
+            env=ANY,
         )
 
     @patch("tools.kubectl_tools.subprocess.run")
@@ -159,6 +161,7 @@ class TestGetPodLogs:
             "capture_output": True,
             "text": True,
             "check": True,
+            "env": ANY,
         }
         assert mock_run.call_args_list[1].args[0] == [
             "kubectl",
@@ -173,6 +176,7 @@ class TestGetPodLogs:
             "capture_output": True,
             "text": True,
             "check": True,
+            "env": ANY,
         }
 
     @patch("tools.kubectl_tools.subprocess.run")
@@ -202,6 +206,7 @@ class TestGetPodLogs:
             capture_output=True,
             text=True,
             check=True,
+            env=ANY,
         )
 
     @patch("tools.kubectl_tools.subprocess.run")
@@ -255,6 +260,7 @@ class TestGetNodeResources:
             capture_output=True,
             text=True,
             check=True,
+            env=ANY,
         )
 
     @patch("tools.kubectl_tools.subprocess.run")
@@ -320,6 +326,7 @@ class TestGetCrashingPods:
             capture_output=True,
             text=True,
             check=True,
+            env=ANY,
         )
 
     @patch("tools.kubectl_tools.subprocess.run")

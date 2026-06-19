@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from graph.agent_graph import run_pipeline
+from tools.k8s_auth import is_in_cluster
 from tools.kubectl_tools import get_crashing_pods
 from tools.prometheus_tools import get_anomalies
 
@@ -16,6 +17,13 @@ load_dotenv()
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 app = FastAPI(title="AI DevOps Copilot")
+
+
+@app.on_event("startup")
+def log_runtime_mode() -> None:
+    """Log whether kubectl should use in-cluster or local auth."""
+
+    print(f"Running in-cluster: {is_in_cluster()}")
 
 
 class AnalyzeRequest(BaseModel):

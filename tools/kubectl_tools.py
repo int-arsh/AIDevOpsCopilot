@@ -4,6 +4,8 @@ import json
 import subprocess
 from typing import Any
 
+from tools.k8s_auth import get_kubectl_env
+
 
 def get_all_pods(namespace: str = "all") -> dict:
     """Fetch pods from the cluster and return name, namespace, status, and restart count."""
@@ -18,6 +20,7 @@ def get_all_pods(namespace: str = "all") -> dict:
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         payload = json.loads(result.stdout)
@@ -64,6 +67,7 @@ def describe_pod(pod_name: str, namespace: str = "default") -> dict:
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         return {"error": False, "data": result.stdout}
@@ -97,6 +101,7 @@ def get_pod_logs(
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         current_logs = current_result.stdout
@@ -109,6 +114,7 @@ def get_pod_logs(
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         return {"error": False, "data": previous_result.stdout}
@@ -124,6 +130,7 @@ def get_node_resources() -> dict:
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         lines = result.stdout.strip().splitlines()
@@ -158,6 +165,7 @@ def get_crashing_pods() -> dict:
             capture_output=True,
             text=True,
             check=True,
+            env=get_kubectl_env(),
         )
 
         crashing_statuses = {"CrashLoopBackOff", "Error", "OOMKilled", "Pending"}
